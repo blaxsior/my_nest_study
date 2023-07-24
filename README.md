@@ -105,8 +105,43 @@ nest cli을 사용하면 프로젝트에 필요한 초기 설정을 알아서 �
 
 ---
 ## Module
+### 모듈 내부 DI
+```mermaid
+flowchart
+    subgraph Module
+        direction LR
+        s1[Service1]
+        s2[Service2]
+        s1 --> s2
+    end
+```
+위 그래프에서 Service1, Service2는 동일한 모듈에 존재하며, s1은 s2를 사용한다고 하자.  
+필요한 동작은 다음과 같다.
+1. Service2에 @Injectable 데코레이터를 붙인다.
+2. 공통 모듈 Module providers에 Service2를 추가한다.
+3. Service1의 생성자에서 Service2을 인자로 받는다. 
 
----
+### 모듈 사이의 DI
+```mermaid
+flowchart LR
+    subgraph Module1
+        direction LR
+        s1[Service1]
+    end
+    subgraph Module2
+        direction LR
+        s2[Service2]
+    end
+    s1 --> s2
+    Module1 --> Module2
+```
+모듈 사이에서 DI를 수행하는 경우 다음 동작을 취한다.
+1. Service2를 Module2의 providers 및 exports에 등록한다.
+2. Module1에서 Module2를 imports에 등록한다.
+3. Service1의 생성자에서 Service2를 인자로 받는다.
+providers에 등록된 의존성들은 외부에 공개되지 않는다. 따라서 다른 모듈에서 사용하기 위해서는 exports 및 imports을 이용하여 명시적으로 등록해야 한다.  
+- exports: 외부로 내보낼 의존성을 등록한다. DI token이다.
+- imports: 외부에서 가져올 모듈을 등록한다.
 ## Controller
 
 ### 사용되는 데코레이터 목록
