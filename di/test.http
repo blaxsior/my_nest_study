@@ -1,0 +1,24 @@
+### post value
+
+POST /computer/calculate HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{
+  "a": 1,
+  "b": 2
+}
+### 데이터 가져오기
+GET /computer/data/10 HTTP/1.1
+Host: localhost:3000
+
+### post value
+
+POST /computer/run/10 HTTP/1.1
+Host: localhost:3000
+Content-Type: application/json
+
+{
+  "a": 1,
+  "b": 2
+}
