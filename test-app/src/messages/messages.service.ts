@@ -1,8 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 
 interface Repository {
-    findOne(id:string): Promise<any>;
-    findAll(): Promise<any>;
+    findOne(id:string): Promise<string|null>;
+    findAll(): Promise<string[]>;
     create(content:string): Promise<void>;
 }
 

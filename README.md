@@ -396,12 +396,106 @@ export class MessagesService {
 
 ### provider
 providers에는 value, class, factory 형태로 의존성이 등록될 수 있으며, 자세한 사항은 [공식 문서](https://docs.nestjs.com/fundamentals/custom-providers) 참고.  
+### standard provider
+nest에서 기본적으로 제공하는 공급자는 클래스 공급자의 형태로, providers 배열에 클래스 생성자를 제공한다. 기본 방식은 클래스 생성자의 provide, useClass 속성에 주입하고 싶은 클래스를 정의하는 형태와 동일하다.
+```typescript
+@Module({
+  controllers: [MessagesController],
+  providers: [
+    MessagesService
+  ]
+})
+// 아래 코드와 동일하다
+@Module({
+  controllers: [MessagesController],
+  providers: [
+    {
+        provide: MessagesService,
+        useClass: MessagesService
+    }
+  ]
+})
+```
+### DI token
+providers 배열에 의존성 리스트를 정의할 때 custom provider의 경우 use~ 속성과 ```provide``` 속성을 정의한다. 이때 ```provide```에 해당하는 값을 DI token이라고 한다.  
+토큰은 각 의존성을 구분하는데 사용되는 값으로, 공식 문서에서는 토큰으로 4가지를 사용할 수 있다고 한다.
+1. 클래스 이름 (default)
+2. 문자열
+3. Symbol
+4. typescript 열거형
+표준에서 제공하는 클래스 이름을 제외하면 의존성 주입 단계에서 ```@Inject()``` 데코레이터를 이용해야 한다.
+```typescript
+// 1. 표준 제공하는 클래스 이름 토큰의 경우
+// MessageRepository로 접근 가능
+private messageRepo: MessageRepository
+// 2. custom provider의 경우
+// 토큰을 이용하여 접근 가능
+@Inject('MSG_REPO') private messageRepo: Repository
+```
+### custom provider
+공급자는 3 + 1개의 종류로 나뉜다.
 
-provider에는 크게 3개의 종류가 존재
-1. value provider
-2. class 
+1. value provider (useValue)
+2. class provider (useClass)
+3. factory provider (useFactory)
+4. alias provider (useExisting)
 
+### value Provider
+상수 값을 주입할 때 사용한다.  
+타입스크립트의 [구조적 타이핑](https://www.typescriptlang.org/ko/docs/handbook/type-compatibility.html)에 의해 두 객체가 동일한 멤버를 가지고 있다면 해당 객체들은 호환되어 서로에게 할당할 수 있다고 한다. 이런 특성을 이용하여 실제 클래스에 대한 mockup 객체를 정의할 때 사용할 수 있다.  
+```typescript
+const mockupMessagesService = {
+  findOne: async (id: string) => `id = ${id}`,
+  findAll: async () => ['1','2','3'],
+  create: async () => {console.log("create")}
+};
 
+@Module({
+  controllers: [AppController, MessagesController],
+  providers: [
+    AppService,
+    {
+      provide: MessagesService,
+      useValue: mockupMessagesService
+    },
+    // MessagesService,
+    {
+      provide: 'MSG_REPO',
+      useClass: MessageRepository
+    }
+  ]
+})
+```
+위 코드를 입력하여 실행해본 결과 실제로 동작한다. (vscode Rest Client 확장)
+```http
+### get message
+GET /messages/28 HTTP/1.1
+Host: localhost:3000
+Accept: application/json
+```
+
+```
+// 출력된 결과
+
+HTTP/1.1 200 OK
+X-Powered-By: Express
+Content-Type: text/html; charset=utf-8
+Content-Length: 7
+ETag: W/"7-2YcGs8Prm2a/9iVqTMK23Q15Ank"
+Date: Mon, 24 Jul 2023 07:10:12 GMT
+Connection: close
+
+id = 28
+```
+### class provider
+useClass를 통해 클래스를 제공하는 공급자이다. 공식 문서에서는 환경에 따라 조건부로 제공하는 코드를 제시하고 있다.
+```typescript
+provide: ConfigService,
+useClass:
+process.env.NODE_ENV === 'development'
+    ? DevelopmentConfigService
+    : ProductionConfigService,
+```
 
 
 ## Exception filter
