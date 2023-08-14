@@ -198,6 +198,37 @@ ex: ``@Param('id', ParseIntPipe) id: number``
     각 경로에 대해 파이프를 사용하고 싶은 경우 ``@usePipes()`` 데코레이터 이용.   
     또는 다른 데코레이터에 넣어서 사용할 수도 있음   
     ex: ``@Param('id',new DefaultValuePipe(0), ParseIntPipe) id: number``
+### ValidationPipeOptions
+[공식 문서](https://docs.nestjs.com/techniques/validation#using-the-built-in-validationpipe). class-validator의 ValidatorOptions에서 제공하는 옵션을 모두 사용할 수 있다고 함.
+- whitelist: DTO에 정의된 프로퍼티가 아니라면 제거. 보안상의 문제(admin: true) 회피
+    - ex: DTO{email, password} 일 때 외부에서 DTO{name, email, password} 전송하면 name은 제거
+    - header
+        ```http
+        POST /auth/signup HTTP/1.1
+        Host: localhost:3000
+        Content-Type: application/json
+
+        {
+            "email": "test123@gmail.com",
+            "password": "test",
+            "stuff": 123
+        }
+        ```
+    - result
+        ```http
+        HTTP/1.1 201 Created
+        X-Powered-By: Express
+        Content-Type: application/json; charset=utf-8
+        Content-Length: 47
+        ETag: W/"2f-Ur5InhBkxpnHiG7hdL2twNkYu+8"
+        Date: Mon, 14 Aug 2023 14:39:12 GMT
+        Connection: close
+
+        {
+            "email": "test123@gmail.com",
+            "password": "test"
+        }
+        ```
 ### default validation pipe
 built-in validation pipe은 다음 라이브러리들을 요구함.
 - class-validator: 데코레이터 기반으로 클래스의 유효성을 검증
@@ -561,3 +592,103 @@ async create(@Body() dto: CreateUserDto) {
   throw new NotFoundException();
 }
 ```
+# typeorm
+https://typeorm.io/
+
+데코레이터 기반 ORM 중 하나로, sequelize와 더불어 nestjs가 간단한 설정을 지원하고 있다.  
+nestjs에서 지원하는 ``@nestjs/typeorm``모듈을 사용하면 알아서 repository을 생성하고 관리해주므로, 좀 더 편리하게 사용 가능하다
+## 세팅
+- 설치
+    ```shell
+    npm install typeorm @nestjs/typeorm
+    ```
+- 등록: app.module.ts에서 Typeorm으로 DB 연결(``TypeormModule.forRoot(config)``)
+    ```typescript
+    // app.module.ts
+    import { TypeOrmModule } from '@nestjs/typeorm';
+    import { typeormDevConfig } from 'config/typeorm/dev.config';
+    @Module({
+    imports: [
+        //...
+        TypeOrmModule.forRoot(typeormDevConfig),
+    ],
+    controllers: [AppController],
+    providers: [AppService],
+    })
+    export class AppModule {}
+
+    // config/typeorm/dev.config.ts
+    import type { TypeOrmModuleOptions } from '@nestjs/typeorm';
+    import { Report } from 'src/reports/report.entity';
+    import { User } from 'src/users/user.entity';
+
+    export const typeormDevConfig: TypeOrmModuleOptions = {
+    type: 'sqlite',
+    database: 'db.sqlite',
+    entities: [User, Report], // 존재하는 엔티티 목록을 모두 등록
+    synchronize: true,
+    };
+    ```
+## 엔티티 생성
+1. 엔티티 파일 생성해서 엔티티가 가진 프로퍼티 정의
+    ```typescript
+    import { IsNumber, IsEmail, IsString } from 'class-validator';
+    import { Entity, Column, PrimaryGeneratedColumn } from 'typeorm';
+
+    @Entity()
+    export class User {
+    @PrimaryGeneratedColumn()
+    @IsNumber()
+    id: number;
+
+    @Column()
+    @IsEmail()
+    email: string;
+
+    @Column()
+    @IsString()
+    password: string;
+    }
+    ```
+2. 엔티티를 부모 모듈과 연결.(``TypeormModule.forRoot(config)``: dynamic 모듈 -> 레포지토리)
+    ```typescript
+    import { Module } from '@nestjs/common';
+    import { TypeOrmModule } from '@nestjs/typeorm';
+
+    import { UsersService } from './users.service';
+    import { UsersController } from './users.controller';
+    import { User } from './user.entity';
+
+    @Module({
+    // dynamic module 형태로 사용할 수 있게 구성
+    imports: [TypeOrmModule.forFeature([User])], 
+    providers: [UsersService],
+    controllers: [UsersController],
+    })
+    export class UsersModule {}
+    ```
+3. 엔티티를 루트(app 모듈)와 연결 (entites에 프로젝트 내 엔티티 모두 포함)
+    ```typescript
+    export const typeormDevConfig: TypeOrmModuleOptions = {
+    //...
+    entities: [User, Report], // 존재하는 엔티티 목록을 모두 등록
+    };
+    ```
+레포지토리를 사용하는 위치에는 다음과 같이 의존성을 주입한다.
+```typescript
+import { Injectable } from '@nestjs/common';
+import { Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { User } from './user.entity';
+
+@Injectable()
+export class UsersService {
+  constructor(@InjectRepository(User) private userRepo: Repository<User>) {}
+}
+```
+- ``@InjectRepository(Entity)`` 데코레이터 적용.
+    - reflect-metadata는 제네릭 정보를 해석하지 못함. 대신 데코레이터를 추가해서 의존성에 주입할 엔티티가 무엇인지 명시한 것
+- ``Repository<Entity>`` 타입으로 받음. typeorm의 dataSource.getRepository(Entity)을 수행할 것으로 예상
+## repository api
+[공식 문서](https://typeorm.io/repository-api)
+typeorm은 하나의 동작에 대해 다양한 방법을 제공. 필요에 따라 읽어봐야 함.
