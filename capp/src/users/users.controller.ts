@@ -10,7 +10,6 @@ import {
   Delete,
   NotFoundException,
   UseInterceptors,
-  ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
@@ -21,6 +20,8 @@ import { UserDto } from './dtos/user.dto';
 import { UseDto } from 'src/decorators/dto.decorator';
 
 @Controller('auth')
+@UseDto(UserDto)
+@UseInterceptors(SerializeInterceptor1)
 export class UsersController {
   constructor(private usersService: UsersService) {}
   @Post('/signup')
@@ -29,7 +30,7 @@ export class UsersController {
     return body;
   }
 
-  @SerializeDTO(UserDto)
+  // @SerializeDTO(UserDto)
   @Get('/:id')
   async findUserById(@Param('id', ParseIntPipe) id: number) {
     const user = await this.usersService.findOne(id);
@@ -44,8 +45,8 @@ export class UsersController {
    * @param email {string}
    * @returns User {id, email}[]
    */
-  @UseInterceptors(SerializeInterceptor1)
-  @UseDto(UserDto)
+  // @UseInterceptors(SerializeInterceptor1)
+  // @UseDto(UserDto)
   @Get()
   async findAllUsersByEmail(@Query('email') email: string) {
     if (!email) return []; // email 정보 없으면 반환 안하게

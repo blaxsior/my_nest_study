@@ -13,10 +13,11 @@ import { ClassType } from 'src/types/index.types';
 export class SerializeInterceptor1 implements NestInterceptor {
   constructor(private reflector: Reflector) {}
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
-    const Dto = this.reflector.get<ClassType>('dto', context.getHandler());
-
-    const ctx = context.getClass();
-    console.log(ctx.name);
+    const Dto = this.reflector.getAllAndOverride<ClassType>('dto', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    // https://docs.nestjs.com/fundamentals/execution-context#reflection-and-metadata
     // // run something before a request is handled
     // console.log('im running before handler', context);
 
