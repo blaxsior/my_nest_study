@@ -606,6 +606,194 @@ return this.userRepo.remove(user);
 - 위에서 언급한 Exception은 HTTP 프로토콜을 사용한다는 가정 하에 동작한다. 만약 WebSocket, gRPC 같은 별개의 프로토콜을 도입하는 경우 HTTPException을 캐치하지 못한다. 만약 하나의 프로젝트에서 여러 프로토콜을 사용한다면 useFilter 데코레이터 및 해당 프로토콜에 대해 제공되는 필터 / 에러를 이용하자.
 - websocket: https://docs.nestjs.com/websockets/exception-filters
 - grpc: https://docs.nestjs.com/microservices/exception-filters
+# Interceptor
+메서드 / 함수 / request 등, 실행 전·후 단계에서 흐름을 가로채서 데이터를 조작.
+
+```mermaid
+flowchart LR
+    a["Client Side"]
+    b["interceptor"]
+    c["@Get()\nRoute Handler"]
+    
+    a -- "request" --> b
+    b -- "request" --> c
+    c -- "response" --> b
+    b -- "response" --> a
+```
+원래 흐름대로면 사용자 요청이 바로 Route Handler에 전달되어야 하나, 중간에 Interceptor가 흐름을 가로채서 데이터를 수정하거나, 추가적인 기능을 수행할 수 있다.
+## 사용하는 경우
+- 메서드 실행 전·후 추가 로직 바인딩
+- 함수 실행 결과를 변환
+- 함수가 던진 예외를 변환
+- 기본적인 함수의 기능을 확장
+- 특정 조건에서 함수를 완전히 오버라이딩 가능(캐싱 등 목적)
+
+## 사용하기
+NestInterceptor을 구현하며, ``@Injectable()`` 데코레이터를 요구한다. RxJs 지식 필요.
+```typescript
+// nestjs 공식문서: https://docs.nestjs.com/interceptors#stream-overriding
+import { Injectable, NestInterceptor, ExecutionContext, CallHandler } from '@nestjs/common';
+import { Observable, of } from 'rxjs';
+
+@Injectable()
+export class CacheInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const isCached = true;
+    if (isCached) {
+      return of([]);
+    }
+    return next.handle();
+  }
+}
+```
+인터셉터 구현 후 ``@UseInterceptors`` 데코레이터를 이용하여 대상에게 바인딩한다.
+## 예시: 중요 정보 지워 전달하기
+유저 정보와 관련된 서비스가 존재한다. 유저 정보에는 id, email, password 등이 존재하나, id 및 password 같은 중요한 정보들은 노출시키고 싶지 않다. [공식 문서](https://docs.nestjs.com/techniques/serialization)
+```typescript
+// in user.entity.ts
+import { Exclude } from 'class-transformer';
+
+@Entity()
+export class User {
+  @Exclude() // Exclude 선언
+  id: number;
+  email: string;
+
+  @Exclude()
+  password: string;
+}
+
+// in controller 
+import {
+//...
+  UseInterceptors,
+  ClassSerializerInterceptor,
+} from '@nestjs/common';
+//...
+@UseInterceptors(ClassSerializerInterceptor)
+@Get()
+async findAllUsers(@Query('email') email: string) {
+return this.usersService.find(email);
+}
+```
+- 노출하지 않을 속성에 ``@Exclude()`` 붙여 명시한다. 이 데코레이터를 붙이면 class-transformer이 클래스를 객체로 변환할 때 대상 속성을 제외한다.
+- 대상 컨트롤러 / 루트에서 ``@UseInterceptor(ClassSerializerInterceptor)``
+### 문제점 및 대안
+```mermaid
+flowchart TD
+    a["UserController"]
+    b["Request\nGET /admin/auth/1"]
+    b2["{id, email, age, password}"]
+    c["Request\nGET /auth/1"]
+    c2["{id, email}"]
+
+    a --> b --> b2
+    a --> c --> c2
+```
+동일한 메서드가 요청 경로에 따라 다른 결과를 반환해야 한다면 문제가 발생한다. 현재 방식은 객체 변환 과정에서 제외할 요소를 하드코딩 해서 경우에 따라 다른 속성을 포함한 객체를 반환하기는 어렵다.
+
+대안은 다음과 같다.
+
+1. 서비스 수준에서 특정 속성을 반환하는 메서드를 여러개 만든다.
+    - typeorm의 반환 단계에서 ``select`` 옵션을 사용하면 쉬움. 다만 typescript 기준 select 후 선택 안한 속성도 표현됨.
+    - ex: User {id, email}만 선택했더라도 타입 자체는 User {id, email, age, password}로 표현되서 에러 발생 쉽다.(반환형이 User이니까)
+2. 각 route에서 반환할 DTO를 정의하고 custom interceptor 사용해서 처리
+    - 엔티티에 직렬화 관련 논리를 포함하지 않아도 됨.
+    - DTO는 request, response 과정에 모두 사용될 수 있음.
+```typescript
+@Injectable()
+export class SerializeInterceptor implements NestInterceptor {
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // run something before a request is handled
+    console.log('im running before handler', context);
+
+    return next.handle().pipe(
+      map((data: any) => {
+        // run something before response is sent out
+        console.log('im running after handler', data);
+        return data;
+      }),
+    );
+  }
+}
+```
+Interceptor은 request 이전, response 이후(유저 전달 이전)를 가로챌 수 있으며, 둘은 로직 처리 위치가 다름.
+- request 이전: return 문 전에 작성
+- response 이후: return문의 pipe 내부에 명시
+## SerializeInterceptor
+Dto 기반 직렬화 기능을 하는 범용 인터셉터로, 현재 2가지 방식으로 구현함
+1. Dto를 Interceptor에게 직접 전달(serialize)
+2. setMetaData로 Dto 설정 후 reflector 사용하여 Interceptor에게 전달(serialize1)
+
+### DTO 인자 전달
+```typescript
+export function SerializeDTO(dto: ClassType) {
+  return UseInterceptors(new SerializeInterceptor(dto));
+}
+
+@Injectable()
+export class SerializeInterceptor implements NestInterceptor {
+  constructor(private dto: ClassType) {}
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    // // run something before a request is handled
+    // console.log('im running before handler', context);
+
+    return next.handle().pipe(
+      map((data: any) => {
+        // // run something before response is sent out
+        // console.log('im running after handler', data);
+        // return data;
+        return plainToClass(this.dto, data, {
+          excludeExtraneousValues: true, // 이외의 값은 무시
+        });
+      }),
+    );
+  }
+}
+```
+인자로 전달 된 dto를 class-transformer과 조합하여 대응되는 DTO 객체 생성
+### metadata 활용
+```typescript
+// dto.decorator.ts
+export function UseDto<T extends ClassType>(dto: T) {
+  return SetMetadata('dto', dto);
+}
+
+// serializable1.interceptor.ts
+export function SerializeDTO1(DTO: ClassType) {
+  return applyDecorators(UseDto(DTO), UseInterceptors(SerializeInterceptor1));
+}
+
+@Injectable()
+export class SerializeInterceptor1 implements NestInterceptor {
+  constructor(private reflector: Reflector) {}
+  intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
+    const Dto = this.reflector.getAllAndOverride<ClassType>('dto', [
+      context.getHandler(),
+      context.getClass(),
+    ]);
+    // https://docs.nestjs.com/fundamentals/execution-context#reflection-and-metadata
+    // // run something before a request is handled
+    // console.log('im running before handler', context);
+
+    return next.handle().pipe(
+      map((data: any) => {
+        // // run something before response is sent out
+        // console.log('im running after handler', data);
+        // return data;
+        return plainToClass(Dto, data, {
+          excludeExtraneousValues: true, // 이외의 값은 무시
+        });
+      }),
+    );
+  }
+}
+```
+setMetadata로 메타데이터를 설정하는 UseDto 작성. Interceptor 내부에서는 Reflector 클래스를 이용하여 현재 컨텍스트의 핸들러(route 메서드) 및 클래스를 참조하여 메타데이터를 추출. 추출한 DTO를 사용하도록 구현됨.
+
+이 경우 2개의 데코레이터가 항상 함께 사용되므로, applyDecorators를 사용하여 하나의 데코레이터 형태로 묶었음.
+
+[공식 문서](https://docs.nestjs.com/fundamentals/execution-context) 참고
 
 # typeorm
 https://typeorm.io/
