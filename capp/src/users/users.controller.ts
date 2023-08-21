@@ -10,18 +10,16 @@ import {
   Delete,
   NotFoundException,
   UseInterceptors,
+  applyDecorators,
 } from '@nestjs/common';
 import { CreateUserDto } from './dtos/create-user.dto';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dtos/update-user.dto';
-import { SerializeInterceptor1 } from 'src/interceptors/serialize1.interceptor';
-import { SerializeDTO } from 'src/interceptors/serialize.interceptor';
+import { SerializeDTO1 } from 'src/interceptors/serialize1.interceptor';
 import { UserDto } from './dtos/user.dto';
-import { UseDto } from 'src/decorators/dto.decorator';
 
 @Controller('auth')
-@UseDto(UserDto)
-@UseInterceptors(SerializeInterceptor1)
+@SerializeDTO1(UserDto)
 export class UsersController {
   constructor(private usersService: UsersService) {}
   @Post('/signup')
