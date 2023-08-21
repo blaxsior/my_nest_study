@@ -15,6 +15,14 @@
 |레포트 작성 | POST | /reports |
 |레포트 수정 | POST | /reports/:id |
 
+### user module
+메서드/경로 | body | 메서드 | 설명 |
+|-|-|-|-|
+| POST /auth/signup | {email, password} | createUser | 유저 생성 |
+| GET /auth/:id | x | findUser | id 기반 유저 찾기 |
+| GET /auth?email=... | x | findAllUsers | 주어진 email 기반 모든 유저 찾기 |
+| PATCH /auth/:id | {email, password} | updateUser | 주어진 id로 유저 업데이트 | 
+| DELETE /auth/:id | x | removeUser | 주어진 id의 유저 삭제 |
 ## 필요한 모듈들
 
 - 유저 모듈(User Controller / Service / Repository)  
