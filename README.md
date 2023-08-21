@@ -592,6 +592,21 @@ async create(@Body() dto: CreateUserDto) {
   throw new NotFoundException();
 }
 ```
+### 예시
+```typescript
+async remove(id: number) {
+const user = await this.userRepo.findOneBy({ id });
+if (!user) {
+    throw new NotFoundException('user not found');
+}
+return this.userRepo.remove(user);
+}
+```
+### Exception 사용 시 고려할 점
+- 위에서 언급한 Exception은 HTTP 프로토콜을 사용한다는 가정 하에 동작한다. 만약 WebSocket, gRPC 같은 별개의 프로토콜을 도입하는 경우 HTTPException을 캐치하지 못한다. 만약 하나의 프로젝트에서 여러 프로토콜을 사용한다면 useFilter 데코레이터 및 해당 프로토콜에 대해 제공되는 필터 / 에러를 이용하자.
+- websocket: https://docs.nestjs.com/websockets/exception-filters
+- grpc: https://docs.nestjs.com/microservices/exception-filters
+
 # typeorm
 https://typeorm.io/
 
@@ -692,3 +707,23 @@ export class UsersService {
 ## repository api
 [공식 문서](https://typeorm.io/repository-api)
 typeorm은 하나의 동작에 대해 다양한 방법을 제공. 필요에 따라 읽어봐야 함.
+### Create & Save
+- ``create({...properties})``: 엔티티 인스턴스를 생성
+- ``save({...properties})``: 엔티티 인스턴스를 저장
+### Create 후 Save 해야 하는 이유
+- ``save``에 인자를 넘겨서 바로 DB에 저장할 수 있지만, validation 로직을 처리하기 위해서는 인스턴스를 생성하여 class-validator의 validation 함수를 실행해야 한다.
+- hook 함수들(beforeInsert 등)은 엔티티 클래스 본문에 정의되어 있다. ``save``에 객체를 넘겨 바로 DB에 저장하는 경우 이러한 hook들이 실행되지 않는다. 이런 버그는 매우 감지하기 어려우므로, ``save`` 함수를 사용한다면 엔티티 인스턴스를 먼저 생성한 후 저장하는 것이 좋다.
+
+### save vs update / insert
+- ``save``: 엔티티 인스턴스를 저장. hook 함수 실행됨. 트랜잭션 기반 즉시 삽입
+- ``update, insert, upsert``: 객체를 기반으로 바로 생성 또는 갱신. hook X
+### remove vs delete
+- ``remove``: 엔티티 인스턴스 기반 삭제. hook 함수 실행됨. 트랜잭션 기반 즉시 삽입
+- ``delete``: 조건 / Id 등을 통해 삭제. hook 함수 실행 안됨
+
+``save``, ``remove``는 데이터를 처리하기 위해 DB로부터 먼저 데이터 fetch 필요
+1. find 쿼리로 DB에서 인스턴스 찾기
+2. 업데이트 적용
+3. save로 DB 반영
+
+hook이 필요하지 않다면 save / remove 사용은 손해
