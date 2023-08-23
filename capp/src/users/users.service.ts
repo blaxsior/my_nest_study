@@ -21,7 +21,7 @@ export class UsersService {
   }
 
   async find(email: string) {
-    return this.userRepo.find({
+    return this.userRepo.findOne({
       where: {
         email,
       },
@@ -43,5 +43,13 @@ export class UsersService {
       throw new NotFoundException('user not found');
     }
     return this.userRepo.remove(user);
+  }
+
+  async isUserExist(email: string) {
+    return this.userRepo.exist({
+      where: {
+        email,
+      },
+    });
   }
 }
