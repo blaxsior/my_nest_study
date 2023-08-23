@@ -5,11 +5,11 @@ import { promisify } from 'util';
 const pbkdf2 = promisify(_pbkdf2);
 
 export const genHash = async (user_pass: string, salt: string) => {
-  return (await pbkdf2(user_pass, salt, 100000, 64, 'sha512')).toString('hex');
+  return (await pbkdf2(user_pass, salt, 100000, 32, 'sha512')).toString('hex');
 };
 
 export const generatePassword = async (user_pass: string) => {
-  const salt = randomBytes(16).toString('hex'); // random salt 생성
+  const salt = randomBytes(8).toString('hex'); // random salt 생성
   const hash = await genHash(user_pass, salt); // 해시 생성
   return `${hash}.${salt}`; // 해시 + salt 조합한 비밀번호 정보 반환
 };
