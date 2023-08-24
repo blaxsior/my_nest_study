@@ -8,10 +8,10 @@ import { typeormDevConfig } from './config/typeorm/dev.config';
 import { ConfigModule } from '@nestjs/config';
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     UsersModule,
     ReportsModule,
     TypeOrmModule.forRoot(typeormDevConfig),
-    ConfigModule.forRoot({ isGlobal: true }),
   ],
   controllers: [AppController],
   providers: [AppService],
