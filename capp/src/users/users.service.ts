@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { User } from './user.entity';
 import { validate } from 'class-validator';
@@ -11,16 +15,24 @@ export class UsersService {
   async create(email: string, password: string) {
     const user = this.userRepo.create({ email, password });
     const result = await validate(user);
-    if (result.length === 0) {
-      await this.userRepo.save(user);
+    if (result.length > 0) {
+      throw new BadRequestException('user already exist');
     }
+    return await this.userRepo.save(user);
   }
 
   async findOne(id: number) {
+    if (id == null) {
+      // id 값 없는 경우 빈 유저 반환
+      return null;
+    }
     return this.userRepo.findOneBy({ id });
   }
 
   async find(email: string) {
+    if (email == null) {
+      return null;
+    }
     return this.userRepo.findOne({
       where: {
         email,
