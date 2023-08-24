@@ -18,7 +18,7 @@ nest 자체는 서버의 역할 수행 못함. 일종의 메타 프레임워크�
     "emitDecoratorMetadata": true
     ```
 
-## 서버 동작 과정
+# 서버 동작 과정
 
 ```mermaid
 flowchart LR 
@@ -44,7 +44,7 @@ flowchart LR
 4. ```Service```: 로직에 따라 서비스 처리
 5. ```Repository```: 데이터베이스 접근
 
-## nestjs의 구성 요소
+# nestjs의 구성 요소
 - Controller: 들어오는 요청을 관리
 - Services: 데이터 접근 및 로직 처리
 - Module: 유사한 토픽을 가진 코드끼리 묶음
@@ -84,7 +84,7 @@ async function bootstrap() {
 
 bootstrap();
 ```
-### convention
+## convention
 1. 파일 당 클래스는 하나만
 2. 클래스는 자신의 타입을 이름에 포함  
    - ex: Controller -> ``App'Controller'``
@@ -94,7 +94,7 @@ bootstrap();
    - ex: AppController <-> app.controller.ts
 
 ---
-## cli 사용법
+# cli 사용법
 nest cli을 사용하면 프로젝트에 필요한 초기 설정을 알아서 처리해줘서 편리함.
 - 설치: ``npm install -g @nestjs/cli``
 - 프로젝트 생성: ``nest new project_name``
@@ -104,8 +104,8 @@ nest cli을 사용하면 프로젝트에 필요한 초기 설정을 알아서 �
         -  --flat: controllers 폴더를 추가로 만들지 않음
 
 ---
-## Module
-### 모듈 내부 DI
+# Module
+## 모듈 내부 DI
 ```mermaid
 flowchart
     subgraph Module
@@ -121,7 +121,7 @@ flowchart
 2. 공통 모듈 Module providers에 Service2를 추가한다.
 3. Service1의 생성자에서 Service2을 인자로 받는다. 
 
-### 모듈 사이의 DI
+## 모듈 사이의 DI
 ```mermaid
 flowchart LR
     subgraph Module1
@@ -142,9 +142,11 @@ flowchart LR
 providers에 등록된 의존성들은 외부에 공개되지 않는다. 따라서 다른 모듈에서 사용하기 위해서는 exports 및 imports을 이용하여 명시적으로 등록해야 한다.  
 - exports: 외부로 내보낼 의존성을 등록한다. DI token이다.
 - imports: 외부에서 가져올 모듈을 등록한다.
-## Controller
+# Controller
+컨트롤러는 Request, Response를 처리하는 일을 당당한다. 클라이언트로부터의 요청을 수신, 정의된 라우팅 알고리즘에 따라 해당 요청을 제어 + 처리한 후 결과를 사용자에게 전달한다.
 
-### 사용되는 데코레이터 목록
+별도의 설정을 추가하지 않으면 express 서버를 내부적으로 사용한다. 각 메서드에서는 return을 이용하나, express 서버 고유의 기능 등을 이용할 필요가 있는 경우 ``@Req``, ``@Res`` 데코레이터를 이용하여 직접 접근할 수 있다.
+## 사용되는 데코레이터 목록
 ``@nestjs/common``에 정의되어 있다.
 - 메서드 데코레이터( HTTP 메서드 시리즈 + )
     - ``@Get('route/:id')``: urlparam도 함께 정의할 수 있음.
@@ -808,6 +810,135 @@ setMetadata로 메타데이터를 설정하는 UseDto 작성. Interceptor 내부
 이 경우 2개의 데코레이터가 항상 함께 사용되므로, applyDecorators를 사용하여 하나의 데코레이터 형태로 묶었음.
 
 [공식 문서](https://docs.nestjs.com/fundamentals/execution-context) 참고
+# session
+```mermaid
+flowchart LR
+    a["GET /path \nCookie: mlokmoklg"]
+    subgraph AAA[Server]
+        s1["Cookie 헤더 탐색"]
+        s2["쿠키 정보 디코딩"]
+        s3["데코레이터 통해 세션 객체 획득"]
+        s4["세션 객체 조작"]
+        s5["Set-Cookie 헤더로 반환"]
+        s1-->s2-->s3-->s4-->s5
+    end
+    a --> AAA
+    AAA --> b["Response\nSet-Cookie: lk4mok5l3"]
+```
+
+# Custom Decorator
+사용자가 일부 데코레이터를 직접 정의할 수 있음
+## Param Decorator
+라우트 핸들러에 사용될 수 있는 파라미터 데코레이터를 직접 정의 가능. Param Decorator에는 ``@Param()``, ``@Body()``, ``@Query()`` 같은 것들이 존재.
+
+```typescript
+import { createParamDecorator, ExecutionContext } from '@nestjs/common';
+
+export const User = createParamDecorator(
+  (data: unknown, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest();
+    return request.user;
+  },
+);
+```
+``createParamDecorator`` 메서드를 이용하면 Param Decorator을 만들 수 있다. ExecutionContext는 Interceptor에서 사용할 수 있던 환경 정보와 동일하며, Request / Response / Next 객체에 접근 가능하다. (Express middleware 개념)
+
+```mermaid
+flowchart LR
+    A["Session Object"]
+    subgraph B["DI system"]
+        direction LR
+        C["Interceptor"]
+        D["Service\nInstance"]
+        F["Repository"]        
+  end
+  G["Decorator"]
+  A-->C
+  D-->C
+  C-->G
+  F-->D
+```
+
+decorator은 DI 시스템 바깥에 존재하므로, 다른 서비스를 직접 이용할 수 없다. Interceptor의 경우 DI 시스템에 의해 관리되어 **의존성에 접근할 수 있으므로**,데코레이터는 Interceptor을 통해 간접적으로 의존성을 이용한다.
+## Decorator with Interceptor
+동작 방식은 다음과 같다.
+1. Interceptor은 DI를 통해 서비스를 주입 받는다.
+2. Interceptor은 ExecutionContext을 통해 Request 객체를 받는다.
+3. Request에서 얻은 정보를 서비스와 조합하여 원하는 User 객체를 얻는다.
+4. User 객체를 Request에 넣는다.
+5. Custom Decorator에서 ExecutionContext에 접근하여 Request 객체를 받는다.
+6. Request에서 이전에 설정한 User 객체를 추출한다.
+```typescript
+// in interceptor
+// 유저 데이터 선언은 declare merging 통해 처리
+@Injectable()
+export class CurrentUserInterceptor implements NestInterceptor {
+  constructor(private userService: UsersService) {} // DI 가능!
+  async intercept(context: ExecutionContext, next: CallHandler) {
+    const req = context.switchToHttp().getRequest<Request>();
+    const userId = req.session.userId;
+    if (userId != null) {
+      const user = await this.userService.findOne(userId);
+      req.currentUser = user; // 유저 데이터 설정
+    }
+    return next.handle();
+  }
+}
+// in custom param decorator
+export const CurrentUser = createParamDecorator(
+  (data: never, ctx: ExecutionContext) => {
+    const request = ctx.switchToHttp().getRequest<Request>();
+    return request.currentUser;
+  },
+);
+```
+위 과정을 거치면 1개의 인터셉터와 1개의 Param Decorator이 생성된다. 인터셉터는 함수 / 클래스 단위로 ``UseInterceptors`` 데코레이터를 이용하여 붙이고, ParamDecorator은 원하는 파라미터에 붙인다.
+## Interceptor 전역 의존성 주입
+만약 현재 데코레이터가 프로젝트 내 모든 위치에서 사용되어야 한다면 ``UseInterceptors(Interceptor)``을 일일이 추가하기 귀찮다. 이 경우 전역 의존성 주입을 사용할 수 있다.
+```typescript
+@Module({
+  imports: [TypeOrmModule.forFeature([User])],
+  providers: [
+    UsersService,
+    AuthService,
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: CurrentUserInterceptor,
+    }, // Use CurrentUser Decorator as globally
+  ],
+  controllers: [UsersController],
+})
+export class UsersModule {}
+```
+``@nestjs/core`` 모듈에서 import 할 수 있는 ``APP_~`` 형태의 DI 토큰들을 이용하면 해당 provider에 대해 의존성 주입을 수행하면서 어플리케이션 전역에서 사용할 수 있도록 적용한다. 단, 이 방식을 이용하면 현재 컨트롤러가 무엇인지에 관계 없이 적용되기 때문에 상황을 잘 고려하여 사용해야 한다. (대부분의 컨트롤러에서 사용할 때만 적용)
+# Guard
+런타임에 특정 조건에 따라 요청이 경로 핸들러에 의해 처리되는지 여부를 결정한다. Express에서는 미들웨어로 처리할 수 있었으나, nestjs에서는 인증(Authentication) 역할을 수행하는 요소를 따로 분리하여 Guard로 둔다.
+- ``canActivate(): boolean`` 구현, 유저가 접근할 수 있는지 여부를 판단
+- ExecutionContext에 접근 가능
+- 어플리케이션 / 컨트롤러 / 핸들러 수준에서 설정 가능
+
+## 사용법
+[공식 문서](https://docs.nestjs.com/guards)
+- Guard 정의
+- ``@UseGuards()`` 통해 가드 바인딩
+```typescript
+// in 
+@Injectable()
+export class AuthGuard implements CanActivate {
+  canActivate(
+    context: ExecutionContext,
+  ): boolean | Promise<boolean> | Observable<boolean> {
+    const request = context.switchToHttp().getRequest<Request>();
+    return request.session.userId != null;
+  }
+}
+// in controller
+@Get('/whoami')
+@UseGuards(AuthGuard)
+async whoAmI(@CurrentUser() user: User) {
+  return user;
+}
+```
 
 # typeorm
 https://typeorm.io/
