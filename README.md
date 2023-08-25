@@ -3,7 +3,7 @@
 - [공식 문서](https://nestjs.com/)
 - [인터넷 강의](https://www.udemy.com/course/nestjs-the-complete-developers-guide/)
 공식 문서와 인터넷 강의를 보면서 정리 + 클론 코딩한 내용을 기록합니다.
----
+
 ## 라이브러리들
 nestjs는 여러개의 모듈 단위로 나뉘어 있으며, 사용자는 공식 홈페이지의 설명을 참고하여 어떤 라이브러리를 사용할지 선택할 수 있음.  
 nest 자체는 서버의 역할 수행 못함. 일종의 메타 프레임워크로, 상용으로 사용되고 있는 express, fastify 등 웹서버 모듈을 포장하는 메타 프레임워크 에 해당.
@@ -93,7 +93,6 @@ bootstrap();
 3. 클래스 이름과 파일 이름이 매칭되어야 함  
    - ex: AppController <-> app.controller.ts
 
----
 # cli 사용법
 nest cli을 사용하면 프로젝트에 필요한 초기 설정을 알아서 처리해줘서 편리함.
 - 설치: ``npm install -g @nestjs/cli``
@@ -103,7 +102,6 @@ nest cli을 사용하면 프로젝트에 필요한 초기 설정을 알아서 �
     - 컨트롤러 생성: ``yarn nest generate controller folder_name/controller_name [--flat]``
         -  --flat: controllers 폴더를 추가로 만들지 않음
 
----
 # Module
 ## 모듈 내부 DI
 ```mermaid
@@ -185,8 +183,8 @@ providers에 등록된 의존성들은 외부에 공개되지 않는다. 따라�
     return user;
   }
 ```
+
 cookie를 다루는 등 경우에 따라 express / fastify의 Response 객체에 바로 접근해야 하는 경우가 있는데, 이때 해당 객체의 메서드를 이용하여 응답을 하면 Nest 응답 처리에 의존하는 기능, 예를 들어 Interceptor 등이 동작하지 않게 된다. Interceptor를 내부적으로 사용하고 있는 경우 직접 ``res.send``를 호출하는 대신 Nest에게 응답 기능을 넘기는 ``passthrough``: true로 지정하여 Nest 기능과의 호환성을 지킬 수 있다.
----
 ## Pipe
 파이프는 다음과 같은 기능 수행
 - transformation: 값을 원하는 형태로 변경.   
@@ -366,7 +364,6 @@ __decorate([
 컴파일 과정에서 ```__decorate```나 ```__metadata```가 추가됨.  
 중요한 옵션은 [emitDecoratorMetadata](https://www.typescriptlang.org/tsconfig#emitDecoratorMetadata)로, 위 언급한 ```__decorate``` 및 ```__metadata```를 컴파일 과정에서 추가.
 
----
 ## Provider
 ```mermaid
 flowchart LR
@@ -1060,3 +1057,19 @@ typeorm은 하나의 동작에 대해 다양한 방법을 제공. 필요에 따�
 3. save로 DB 반영
 
 hook이 필요하지 않다면 save / remove 사용은 손해
+
+# Testing
+nestjs의 중요한 시스템 중 하나는 Dependency Injection이다. DI Container을 통해 프레임워크가 여러 의존성을 관리하기 때문에 어떤 툴도 없다면 각각 테스트하기에는 어려움이 있다. 
+
+다행히도 nestjs 자체적으로 테스팅에 도움이 될 수 있는 라이브러리인 ``@nestjs/testing``을 통해 테스팅 전용 DI 모듈 등 일부 시스템을 미리 제공하고 있으며, 이러한 툴을 기존 테스팅 도구인 jest, supertest 등과 조합하여 테스트할 수 있다.
+## Unit Testing
+대부분의 유닛은 DI Container에 의한 의존성 관리의 도움을 받기 때문에 Mocking + TestingModule을 통해 유닛 단위의 테스팅을 수행해야 한다.
+
+테스팅 과정은 다음과 같다.
+1. 의존성에 대해 Mocking 수행
+2. 테스팅 전용 DI 컨테이너인 TestingModule을 생성
+3. TestingModule에서 현재 테스트 대상 추출
+
+```typescript
+
+```
