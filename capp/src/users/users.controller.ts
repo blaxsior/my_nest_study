@@ -51,7 +51,7 @@ export class UsersController {
     @Session() session: any,
     //nestjs에게 맡기기
   ) {
-    const user = await this.authService.signIn(body.email, body.password);
+    const user = await this.authService.signin(body.email, body.password);
     session.userId = user.id;
     return user;
   }

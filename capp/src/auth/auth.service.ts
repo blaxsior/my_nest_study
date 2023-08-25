@@ -1,5 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { UsersService } from 'src/users/users.service';
+import { UsersService } from '../users/users.service';
 import { checkPassword, generatePassword } from './util/password';
 @Injectable()
 export class AuthService {
@@ -21,15 +21,15 @@ export class AuthService {
     return user;
   }
 
-  async signIn(email: string, password: string) {
+  async signin(email: string, password: string) {
     const errorMessage = 'something wrong with email or password';
     const user = await this.usersService.find(email);
     if (!user) {
       // 해당되는 유저가 없음
       throw new BadRequestException(errorMessage);
     }
-    const userExist = await checkPassword(password, user.password);
-    if (!userExist) {
+    const passMatch = await checkPassword(password, user.password);
+    if (!passMatch) {
       throw new BadRequestException(errorMessage);
     }
     return user;
