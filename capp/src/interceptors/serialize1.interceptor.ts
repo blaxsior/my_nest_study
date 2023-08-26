@@ -10,8 +10,8 @@ import {
 import { Observable, map } from 'rxjs';
 import { plainToClass } from 'class-transformer';
 import { Reflector } from '@nestjs/core';
-import { ClassType } from 'src/types/index.types';
-import { UseDto } from 'src/decorators/dto.decorator';
+import { ClassType } from '../types/index.types';
+import { UseDto } from '../decorators/dto.decorator';
 
 export function SerializeDTO1(DTO: ClassType) {
   return applyDecorators(UseDto(DTO), UseInterceptors(SerializeInterceptor1));

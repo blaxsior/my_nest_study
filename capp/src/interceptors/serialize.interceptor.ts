@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Observable, map } from 'rxjs';
 import { plainToClass } from 'class-transformer';
-import { ClassType } from 'src/types/index.types';
+import { ClassType } from '../types/index.types';
 
 export function SerializeDTO(dto: ClassType) {
   return UseInterceptors(new SerializeInterceptor(dto));
