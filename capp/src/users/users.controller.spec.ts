@@ -2,10 +2,12 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { AuthService } from '../auth/auth.service';
+import { NotFoundException } from '@nestjs/common';
+
 import type { User } from './user.entity';
 import type { CreateUserDto } from './dtos/create-user.dto';
-import { SignInUserDto } from './dtos/signin-user.dto';
-import { NotFoundException } from '@nestjs/common';
+import type { SignInUserDto } from './dtos/signin-user.dto';
+import type { UpdateUserDto } from './dtos/update-user.dto';
 
 jest.mock('./users.service'); // user service mocking
 // findOne, find, update, remove
@@ -13,6 +15,7 @@ jest.mock('../auth/auth.service'); // auth service mocking
 // signup, signin
 // 아래에서 spyOn 함수로 오버라이딩. mock에서 하면 @Injectable 잃음.
 
+// whoAmI는 매우 단순하므로 테스트 안함.
 describe('class UsersController', () => {
   const baseUser = {
     id: 1,
@@ -145,6 +148,28 @@ describe('class UsersController', () => {
       const promise = controller.findUserByEmail();
 
       await expect(promise).resolves.toBeNull();
+    });
+  });
+
+  describe('updateUser()', () => {
+    it('should call userService.update()', async () => {
+      const id = 1;
+      const updateData: UpdateUserDto = { email: 'test', password: 'test' };
+      const updateSpy = jest.spyOn(userService, 'update');
+
+      await controller.updateUser(id, updateData);
+
+      expect(updateSpy).toBeCalled();
+    });
+  });
+
+  describe('removeUser()', () => {
+    it('should call userService.remove()', async () => {
+      const id = 1;
+      const removeSpy = jest.spyOn(userService, 'remove');
+      await controller.removeUser(id);
+
+      expect(removeSpy).toBeCalled();
     });
   });
 });

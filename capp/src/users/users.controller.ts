@@ -75,7 +75,6 @@ export class UsersController {
   @Get('/:id')
   async findUserById(@Param('id', ParseIntPipe) id: number) {
     const user = await this.usersService.findOne(id);
-    console.log(user);
     if (!user) {
       throw new NotFoundException('user not found');
     }
@@ -83,11 +82,11 @@ export class UsersController {
   }
 
   /**
-   * @param email {string}
-   * @returns User {id, email}[]
+   * @param {string?} email
+   * @returns {User} User
    */
   @Get()
-  async findUserByEmail(@Query('email') email: string) {
+  async findUserByEmail(@Query('email') email?: string) {
     if (!email) return null; // email 정보 없으면 반환 안하게
     return this.usersService.find(email);
   }
