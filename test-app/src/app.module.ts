@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, ValueProvider } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { MessagesService } from './messages/messages.service';
@@ -19,7 +19,7 @@ const mockupMessagesService = {
     {
       provide: MessagesService,
       useValue: mockupMessagesService
-    },
+    } as ValueProvider<ToInterface<MessagesService>>,
     // MessagesService,
     {
       provide: 'MSG_REPO',
@@ -32,3 +32,4 @@ export class AppModule {
     console.log("App Module Created");
   }
 }
+type ToInterface<T> = {[P in keyof T]: T[P]};
